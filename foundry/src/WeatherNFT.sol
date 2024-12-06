@@ -2,9 +2,8 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract WeatherNFT is ERC721, Ownable {
+contract WeatherNFT is ERC721 {
     uint256 public tokenCounter;
 
     enum WeatherType {
@@ -22,16 +21,16 @@ contract WeatherNFT is ERC721, Ownable {
         uint256 timestamp;
     }
 
-    mapping(uint256 => WeatherData[]) private weatherHistory;
-    mapping(WeatherType => string) public weatherTypeCID;
+    mapping(uint256 => WeatherData[]) private weatherHistory; // Historique des données météo par token
+    mapping(WeatherType => string) public weatherTypeCID; // CID pour chaque type de météo
 
     event Minted(uint256 tokenId, address owner);
     event MetadataUpdated(uint256 tokenId, WeatherData data);
 
-    constructor() ERC721("WeatherNFT", "WNFT") Ownable(msg.sender) {
+    constructor() ERC721("WeatherNFT", "WNFT") {
         tokenCounter = 0;
 
-        // Define CIDs for each weather type
+        // Définition des CIDs pour chaque type de météo
         weatherTypeCID[
             WeatherType.Sun
         ] = "bafkreie667pj4qimtdcmld2hl2blbwnfcwdcn5vklzcxgxyteypzj4wnte";
@@ -43,7 +42,7 @@ contract WeatherNFT is ERC721, Ownable {
         ] = "bafkreierhwploerf6lsaydheglsrbpyqggtjssnz5cpubehhpvuxjigyuu";
     }
 
-    // Mint a new NFT with initial weather data
+    // Mint un nouveau NFT avec des données météo initiales
     function mintWeatherNFT(
         int256 temperature,
         uint256 humidity,
@@ -71,7 +70,7 @@ contract WeatherNFT is ERC721, Ownable {
         return newTokenId;
     }
 
-    // Update metadata for a specific tokenId
+    // Mettre à jour les métadonnées pour un tokenId spécifique
     function updateWeatherMetadata(
         uint256 tokenId,
         int256 temperature,
@@ -97,7 +96,7 @@ contract WeatherNFT is ERC721, Ownable {
         emit MetadataUpdated(tokenId, newWeatherData);
     }
 
-    // Retrieve weather data for specific periods
+    // Récupérer les données météo pour des périodes spécifiques
     function getWeatherData(
         uint256 tokenId,
         uint256 period
@@ -105,14 +104,17 @@ contract WeatherNFT is ERC721, Ownable {
         require(_exists(tokenId), "Token does not exist");
 
         uint256 startTime;
+
         if (period == 1) {
-            // Today
-            startTime = block.timestamp - 1 days;
+            // Aujourd'hui : Utilisation d'un calcul précis pour récupérer les données du jour
+            uint256 currentDayStart = block.timestamp -
+                (block.timestamp % 1 days);
+            startTime = currentDayStart;
         } else if (period == 7) {
-            // Last week
+            // La semaine dernière
             startTime = block.timestamp - 7 days;
         } else if (period == 30) {
-            // Last month
+            // Le mois dernier
             startTime = block.timestamp - 30 days;
         } else {
             revert(
@@ -122,6 +124,7 @@ contract WeatherNFT is ERC721, Ownable {
 
         uint256 length = 0;
 
+        // Parcours des données pour déterminer le nombre d'éléments valides
         for (uint256 i = 0; i < weatherHistory[tokenId].length; i++) {
             if (weatherHistory[tokenId][i].timestamp >= startTime) {
                 length++;
@@ -131,6 +134,7 @@ contract WeatherNFT is ERC721, Ownable {
         WeatherData[] memory results = new WeatherData[](length);
         uint256 index = 0;
 
+        // Remplir le tableau des résultats
         for (uint256 i = 0; i < weatherHistory[tokenId].length; i++) {
             if (weatherHistory[tokenId][i].timestamp >= startTime) {
                 results[index] = weatherHistory[tokenId][i];
@@ -141,14 +145,14 @@ contract WeatherNFT is ERC721, Ownable {
         return results;
     }
 
-    // Retrieve the CID for a specific weather type
+    // Récupérer le CID pour un type de météo spécifique
     function getWeatherTypeCID(
         WeatherType weatherType
     ) external view returns (string memory) {
         return weatherTypeCID[weatherType];
     }
 
-    // Utility function to check if a token exists
+    // Fonction utilitaire pour vérifier si un token existe
     function _exists(uint256 tokenId) internal view returns (bool) {
         return _ownerOf(tokenId) != address(0);
     }
